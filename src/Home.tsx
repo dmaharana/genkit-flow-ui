@@ -25,7 +25,7 @@ export function Home() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setRecipe(null) // Clear old recipe when starting new generation
+    setRecipe(null)
 
     try {
       const response = await fetch('/api/recipeGeneratorFlow', {
@@ -58,9 +58,14 @@ export function Home() {
   return (
     <div className={`app-container ${recipe || loading ? 'has-recipe' : 'no-recipe'}`}>
       <header className="home-header">
-        <ThemeToggle />
-        <Link to="/admin" className="admin-link">Admin Traces</Link>
+        <div className="header-actions">
+          <ThemeToggle />
+          <Link to="/admin" className="btn-secondary admin-link">
+            <span className="icon">📊</span> Admin Traces
+          </Link>
+        </div>
       </header>
+      
       <div className="main-content">
         <div className="input-section">
           <h1>Genkit Recipe Generator</h1>
