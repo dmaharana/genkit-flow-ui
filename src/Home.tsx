@@ -25,6 +25,7 @@ export function Home() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setRecipe(null) // Clear old recipe when starting new generation
 
     try {
       const response = await fetch('/api/recipeGeneratorFlow', {
@@ -55,7 +56,7 @@ export function Home() {
   }
 
   return (
-    <div className={`app-container ${recipe ? 'has-recipe' : 'no-recipe'}`}>
+    <div className={`app-container ${recipe || loading ? 'has-recipe' : 'no-recipe'}`}>
       <header className="home-header">
         <ThemeToggle />
         <Link to="/admin" className="admin-link">Admin Traces</Link>
@@ -87,16 +88,21 @@ export function Home() {
               />
             </div>
 
-            <button type="submit" disabled={loading || !ingredient}>
-              {loading ? 'Generating...' : 'Generate Recipe'}
+            <button type="submit" disabled={loading || !ingredient} className="btn-primary">
+              {loading ? (
+                <><span className="spinner-small"></span> Generating...</>
+              ) : (
+                'Generate Recipe'
+              )}
             </button>
             
-            {recipe && (
+            {(recipe || error) && (
               <button 
                 type="button" 
-                className="clear-btn" 
+                className="btn-secondary" 
                 onClick={() => {
                   setRecipe(null);
+                  setError(null);
                   setIngredient('');
                   setDietaryRestrictions('');
                 }}
@@ -108,6 +114,17 @@ export function Home() {
           {error && <div className="error">{error}</div>}
         </div>
 
+        {loading && (
+          <div className="recipe-section loading-container">
+            <div className="recipe-card loading-card">
+              <div className="loading-state">
+                <span className="spinner"></span>
+                <p>Chef is thinking... Crafting your perfect recipe.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {recipe && (
           <div className="recipe-section">
             <div className="recipe-card">
@@ -115,9 +132,9 @@ export function Home() {
               <p className="description">{recipe.description}</p>
               
               <div className="recipe-meta">
-                <span><strong>Prep:</strong> {recipe.prepTime}</span>
-                <span><strong>Cook:</strong> {recipe.cookTime}</span>
-                <span><strong>Servings:</strong> {recipe.servings}</span>
+                <span className="meta-badge"><strong>Prep:</strong> {recipe.prepTime}</span>
+                <span className="meta-badge"><strong>Cook:</strong> {recipe.cookTime}</span>
+                <span className="meta-badge"><strong>Servings:</strong> {recipe.servings}</span>
               </div>
 
               <div className="section">

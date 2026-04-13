@@ -26,7 +26,8 @@ export function Admin() {
       const response = await fetch('/api/admin/traces')
       if (!response.ok) throw new Error('Failed to fetch traces')
       const data = await response.json()
-      setTraceIds(data)
+      // Ensure traceIds is always an array
+      setTraceIds(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -87,7 +88,7 @@ export function Admin() {
           )}
           {error && <p className="error-text">{error}</p>}
           <ul>
-            {traceIds.map(id => (
+            {(traceIds || []).map(id => (
               <li key={id} onClick={() => fetchTraceDetail(id)} className={selectedTrace?.traceId === id ? 'active' : ''}>
                 <div className="trace-item-id">ID: {id.substring(0, 8)}...</div>
               </li>
@@ -110,7 +111,7 @@ export function Admin() {
               <div className="spans-section">
                 <h3>Span Execution Tree</h3>
                 <div className="spans-container">
-                  {Object.values(selectedTrace.spans).sort((a: any, b: any) => a.startTime - b.startTime).map((span: any) => (
+                  {Object.values(selectedTrace.spans || {}).sort((a: any, b: any) => a.startTime - b.startTime).map((span: any) => (
                     <div key={span.spanId} className="span-card">
                       <div className="span-header">
                         <span className="span-name">{span.displayName}</span>
