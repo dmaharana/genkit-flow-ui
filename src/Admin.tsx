@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
+import { TraceTimeline } from './TraceTimeline'
 
 interface Trace {
   traceId: string;
@@ -15,6 +16,7 @@ export function Admin() {
   const [selectedTrace, setSelectedTrace] = useState<Trace | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('timeline')
 
   useEffect(() => {
     fetchTraces()
@@ -26,7 +28,6 @@ export function Admin() {
       const response = await fetch('/api/admin/traces')
       if (!response.ok) throw new Error('Failed to fetch traces')
       const data = await response.json()
-      // Ensure traceIds is always an array
       setTraceIds(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -48,6 +49,18 @@ export function Admin() {
       setLoading(false)
     }
   }
+
+  const tokenSummary = useMemo(() => {
+    if (!selectedTrace) return { input: 0, output: 0 }
+    let input = 0
+    let output = 0
+    Object.values(selectedTrace.spans || {}).forEach((span: any) => {
+      const attrs = span.attributes || {}
+      if (attrs['genkit:metadata:input_tokens']) input += Number(attrs['genkit:metadata:input_tokens'])
+      if (attrs['genkit:metadata:output_tokens']) output += Number(attrs['genkit:metadata:output_tokens'])
+    })
+    return { input, output }
+  }, [selectedTrace])
 
   const safeParse = (str: string) => {
     if (!str) return '';
@@ -105,40 +118,62 @@ export function Admin() {
                   <span className="meta-badge"><strong>Trace ID:</strong> {selectedTrace.traceId}</span>
                   <span className="meta-badge"><strong>Duration:</strong> {(selectedTrace.endTime - selectedTrace.startTime).toFixed(2)}ms</span>
                   <span className="meta-badge"><strong>Timestamp:</strong> {new Date(selectedTrace.startTime).toLocaleString()}</span>
+                  <span className="meta-badge token-badge"><strong>Tokens:</strong> {tokenSummary.input} in / {tokenSummary.output} out</span>
                 </div>
               </div>
 
-              <div className="spans-section">
-                <h3>Span Execution Tree</h3>
-                <div className="spans-container">
-                  {Object.values(selectedTrace.spans || {}).sort((a: any, b: any) => a.startTime - b.startTime).map((span: any) => (
-                    <div key={span.spanId} className="span-card">
-                      <div className="span-header">
-                        <span className="span-name">{span.displayName}</span>
-                        <span className="span-kind-badge">{span.spanKind}</span>
-                      </div>
-                      <div className="span-body">
-                        {span.attributes?.['genkit:input'] && (
-                          <div className="attribute">
-                            <label>Input Data</label>
-                            <pre className="code-block">{safeParse(span.attributes['genkit:input'])}</pre>
-                          </div>
-                        )}
-                        {span.attributes?.['genkit:output'] && (
-                          <div className="attribute">
-                            <label>Output Data</label>
-                            <pre className="code-block highlight-output">{safeParse(span.attributes['genkit:output'])}</pre>
-                          </div>
-                        )}
-                        <details className="raw-details">
-                          <summary>View raw span metadata</summary>
-                          <pre className="code-block small">{JSON.stringify(span, null, 2)}</pre>
-                        </details>
-                      </div>
-                    </div>
-                  ))}
+              <div className="view-toggle-section">
+                <div className="view-tabs">
+                  <button 
+                    className={`tab-btn ${viewMode === 'timeline' ? 'active' : ''}`}
+                    onClick={() => setViewMode('timeline')}
+                  >
+                    Timeline View
+                  </button>
+                  <button 
+                    className={`tab-btn ${viewMode === 'list' ? 'active' : ''}`}
+                    onClick={() => setViewMode('list')}
+                  >
+                    Details List
+                  </button>
                 </div>
               </div>
+
+              {viewMode === 'timeline' ? (
+                <TraceTimeline trace={selectedTrace} />
+              ) : (
+                <div className="spans-section">
+                  <h3>Span Execution Tree</h3>
+                  <div className="spans-container">
+                    {Object.values(selectedTrace.spans || {}).sort((a: any, b: any) => a.startTime - b.startTime).map((span: any) => (
+                      <div key={span.spanId} className="span-card">
+                        <div className="span-header">
+                          <span className="span-name">{span.displayName}</span>
+                          <span className="span-kind-badge">{span.spanKind}</span>
+                        </div>
+                        <div className="span-body">
+                          {span.attributes?.['genkit:input'] && (
+                            <div className="attribute">
+                              <label>Input Data</label>
+                              <pre className="code-block">{safeParse(span.attributes['genkit:input'])}</pre>
+                            </div>
+                          )}
+                          {span.attributes?.['genkit:output'] && (
+                            <div className="attribute">
+                              <label>Output Data</label>
+                              <pre className="code-block highlight-output">{safeParse(span.attributes['genkit:output'])}</pre>
+                            </div>
+                          )}
+                          <details className="raw-details">
+                            <summary>View raw span metadata</summary>
+                            <pre className="code-block small">{JSON.stringify(span, null, 2)}</pre>
+                          </details>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="empty-state">
